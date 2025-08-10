@@ -1,0 +1,127 @@
+# coding=utf-8
+# 优化说明
+# 1.非递归实现：
+#     使用动态规划思想，自底向上进行归并排序
+#     初始时每个元素视为一个已排序的子列表（大小为1）
+#     逐步合并相邻的子列表，每次合并后子列表大小翻倍
+
+# 2.性能优势：
+#     避免了递归调用的开销
+#     空间复杂度仍为O(n)
+#     时间复杂度保持O(n log n)
+
+# 3.多字段排序保留：
+#     保留了原来的多字段比较逻辑
+#     支持任意数量的排序字段
+#     每个字段可单独指定升序或降序
+
+# 4.边界处理：
+#     正确处理输入为空的情况
+#     处理合并时最后一个chunk可能不完整的情况
+
+
+def multi_field_sort(data, fields):
+    """
+    多字段排序的非递归实现（动态规划方法）
+    参数:
+        data: 要排序的数据列表，每个元素是一个字典
+        fields: 排序字段列表，每个元素是元组 (字段名, 升序True/降序False)
+    返回:
+        排序后的新列表
+    """
+    if not data:
+        return []
+
+    # 初始时每个元素视为一个已排序的子列表
+    chunk_size = 1
+    n = len(data)
+    sorted_data = [item.copy() for item in data]
+
+    while chunk_size < n:
+        # 每次合并相邻的两个chunk
+        for start in range(0, n, chunk_size * 2):
+            # 确定要合并的两个chunk的边界
+            mid = min(start + chunk_size, n)
+            end = min(start + chunk_size * 2, n)
+
+            # 合并两个已排序的chunk
+            merged = merge(
+                sorted_data[start:mid],
+                sorted_data[mid:end],
+                fields
+            )
+            # 将合并结果放回原数组
+            sorted_data[start:end] = merged
+
+        # 每次迭代chunk大小翻倍
+        chunk_size *= 2
+    return sorted_data
+
+
+def merge(left, right, fields):
+    """合并两个已排序的列表"""
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if compare(left[i], right[j], fields) <= 0:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+
+    # 添加剩余元素
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+
+def compare(a, b, fields):
+    """
+    比较两个字典的多字段
+
+    返回:
+        -1: a < b
+        0: a == b
+        1: a > b
+    """
+    for field, ascending in fields:
+        val_a = a.get(field)
+        val_b = b.get(field)
+
+        # 处理None值情况
+        if val_a is None and val_b is None:
+            continue
+        if val_a is None:
+            return -1 if ascending else 1
+        if val_b is None:
+            return 1 if ascending else -1
+
+        # 比较实际值
+        if val_a < val_b:
+            return -1 if ascending else 1
+        if val_a > val_b:
+            return 1 if ascending else -1
+
+    return 0
+
+
+# 示例使用
+if __name__ == "__main__":
+    data = [
+        {"name": "Alice", "age": 25, "score": 90},
+        {"name": "Bob", "age": 30, "score": 85},
+        {"name": "Charlie", "age": 25, "score": 95},
+        {"name": "David", "age": 30, "score": 80},
+        {"name": "Eve", "age": 22, "score": 88},
+        {"name": "Frank", "age": 22, "score": 92},
+        {"name": "Grace", "age": 28, "score": 78},
+        {"name": "Hank", "age": 35, "score": 89}
+    ]
+
+    # 先按age升序，再按score降序
+    sorted_data = multi_field_sort(data, [("age", True), ("score", False)])
+
+    print("排序结果:")
+    for item in sorted_data:
+        print(item)
